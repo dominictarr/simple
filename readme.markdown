@@ -3,10 +3,38 @@
 
   PLAN:
   
+  first implementation is the bootstrap implementation.
+  implement basic in memory structure and modules to support level2.
+  
+  variation on resolve which arranges all the closures to make the tree resolvable. assign all the closures to vars and then call the functions in order... or will it be better to just have resolve on the client?
+
+  a closure should only be evaled once in a closure. (am i checking this?)
+
+  sieve(
+    upto(),
+    isPrime()
+    ) 
+  
     release minimal publicially pushable system.
       sync only -> improve later
       couch db.
       client side app for running a specific test.
+
+    Module/Test(name,[dependencies],closure) format
+    
+    version 0:
+    
+    sync functions
+    resolve executalbe / browser friendly .js
+    
+    generate tree of test,...:passes
+
+    core assert
+    async asserts
+    
+    version 1:  
+    support for packages?
+      or a package.json specification & wrapper for .js files?
 
   okay, good.
   

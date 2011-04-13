@@ -12,17 +12,33 @@ module.exports = function (){
   Object.freeze(Array)
 */
 
-  var exports = {}
-  var modules = []
-    , __modules = {}
-    , tests = []
+  var __modules = {}
     , __tests = {}
     , results = []
-    , passes = {}
+    , __passes = {}
     , curry = require('curry')
     , ctrl = require('ctrlflow')
     , fs = require('fs')
     , join = require('path').join
+
+  var exports = {
+    __passes: __passes
+  , test: curry(add,[true])
+  , module: curry(add,[false])
+  , load: load
+  , tree: tree 
+  , moduleTree: moduleTree
+  , run: run 
+  , resolvable: resolvable
+  , resolve: resolve
+  , resolveAll: resolveAll
+  , closure: closure
+  , passes: passes
+  , depends: depends 
+  , isTest: isTest
+  , isModule: isModule 
+  , firstPass: firstPass
+  }
 
   function add (name,depends,closure,isTest){
     var m = {
@@ -32,15 +48,12 @@ module.exports = function (){
         , isTest: isTest }
       , s = {}
       , r, src
-
     
     for(var i in m) { s[i] = m[i] }
     s.closure = r = Math.random()
     src = '(' + JSON.stringify(s).split('' + r).join(closure.toString()) + ')'
 
     m = cleanEval(src)
-    
-    console.log(m)
     
     if(!isTest){
       __modules[name] = m
@@ -50,76 +63,68 @@ module.exports = function (){
 
   }
 
-  exports.__passes = passes
-  exports.test = curry(add,[true])
-  exports.module = curry(add,[false])
-
   function loadCtx (src){
-
     var Test = exports.test
     var Module = exports.module
     eval('' + src)
-  
   }
 
-  var load = 
-  exports.load = function (files,relative,done){
-      if('function' === typeof relative){
-        done = relative
-        relative = null
-        }
+  function load (files,relative,done){
+    if('function' === typeof relative){
+      done = relative
+      relative = null
+      }
 
-      files.forEach(function (e){
-        var file = relative ? join(relative, e) : e
+    files.forEach(function (e){
+      var file = relative ? join(relative, e) : e
 
-        loadCtx(fs.readFileSync(file + '.mm'))
-        
-      })
-
-      done()
-  
-  }
+      loadCtx(fs.readFileSync(file + '.mm'))
+      
+    })
+    done()
+  }  
  
-
-  function get (list, f){
-    for (var i in list){
-      if(f(list[i]))
-        return list[i]
-    }
+  function resolveModule(tests){
+    var p = firstPass(tests)
+    return closure(p).apply(null,depends(p).map(resolveModule))
   }
 
-  var resolve = 
-  exports.resolve = function (){
-    var closure = [].pop.call(arguments)
-      , depends = [].shift.call(arguments)
-      , star = [].pop.call(arguments)
+  function _resolve(deps,funx){
+    funx.apply(null,deps.map(resolveModule))
+  }
+  function moduleTree(tests){
+    var p
+    return [p = firstPass(tests)].concat(depends(p).map(moduleTree))
+  }
+
+  //things are simplified if I insist that tests get the target as the first argument.
+  //test closures are evaled only at the root.
+
+  function tree (deps){
+    var t = {}
+
+    deps.forEach(function (module){
+      var mDep = {}, p = firstPass(module)
+      mDep[p] = tree(depends(p))
+      //could iterate all passes
+      //and make tree of all resolutions.
+      t[module] = mDep
+    })
+    return t
+  }
+
+  function resolve (deps,closure){
      //find get exports for list, and apply to closure.
 
     return closure.apply(null,
-      depends.map(function (e){
-        if(e === '*')
-          return star
-        else {
-          var _p = exports.passes(e)
-            , p = _p && _p[0]
-            , m = __modules[p] //getNamed(modules,p)
-          if(!p)
-            throw new Error('could not find module that passes:\'' + e + "'")
-          if(!m)
-            throw new Error('could not find module:' + p + '  for test ' + e)
+      deps.map(function (e){
+          var p = firstPass(e)
+            , m = __modules[p]
           return resolve(m.depends,m.closure)
-        }
       }))
   }
-
-  var getNamed = function (list, name){
-    return get(list, function (e){
-      return e.name === name
-    })
-  }
   
-  var run = 
-  exports .run = function (test,module){
+  function run (test,module){
     if('string' == typeof test)
       test = __tests[test]
     if('string' == typeof module)
@@ -129,13 +134,18 @@ module.exports = function (){
     results[test.name] = results[test.name] || []
 
     var trial
-
+      , tdeps = 
+          ( test.depends[0] == '*' 
+          ? test.depends.slice(1)
+          : test.depends ) 
     try{
       var target = resolve(module.depends,module.closure)
       trial = 
-      resolve (test.depends, target, function (){
+      resolve (tdeps, function (){
           var args = arguments
           return function (){
+            //inject target here, assuming target is always first.
+            [].unshift.call(args,target)
             test.closure.apply(null,args)
           }
         })
@@ -149,33 +159,31 @@ module.exports = function (){
       trial()
       r.status = 'success'
     } catch (err){
-//      console.log(err)
       r.status = 'failure'
       r.failure = err
     }
 
     if(r.status === 'success'){
-      passes [test.name] = passes [test.name] || []
+      __passes [test.name] = __passes [test.name] || []
 
-      if(!~passes [test.name].indexOf(module.name))
-        passes  [test.name].push(module.name)
+      if(!~__passes [test.name].indexOf(module.name))
+        __passes  [test.name].push(module.name)
     }
     results[test.name].push(r)
 
     return r
   }
   
-  var resolvable = 
-  exports.resolvable = function (test){
+  function resolvable (test){
     function cp (x){
       return (
         ('boolean' === typeof x || '*' === x)
         ? true 
-        : !! passes[x]
+        : !! __passes[x]
         )
     }
 
-    if(passes[test])
+    if(__passes[test])
       return true
     else {
       if(!__tests[test])
@@ -186,10 +194,8 @@ module.exports = function (){
       }
       return true
     }
-
   }
-
-  exports.resolveAll = function (){
+  function resolveAll (){
 
     /*
       improve this to traverse tests more efficantly.
@@ -210,18 +216,38 @@ module.exports = function (){
 
             var s = Date.now()
             var r = run(test,module)
-            console.log(r.status === 'success' ? '   P' : '    !', test.name,'->', module.name, 'in:' + (Date.now() - s))
 
-            if('success' === r.status && -1 == passes[test.name].indexOf(module.name))
+            if('success' === r.status && -1 == __passes[test.name].indexOf(module.name))
               throw new Error('pass log error at:' + test.name + ' -> ' + module.name)
 
            })(__modules[j])
         })(__tests[i])
   }
 
-  exports.passes = function (list){
+  function isTest (test){
+    if(Array.isArray(test))
+      return test.reduce(function (x,y){
+        return !!x && !!__tests[y]
+      }, true )
+    return !!__tests[test]
+  }
+ 
+  function isModule (module){
+    return !!__modules[module]
+  }
+
+  function depends (module){
+    return isTest(module) 
+      ? __test[module].depends 
+      : __modules[module].depends
+  }
+  
+  function closure (name){
+    return (isModule (name) ? __modules[name] : __tests[name]).closure
+  }
+  function passes (list){
     if(arguments.length == 0)
-      return passes
+      return __passes
     if(Array.isArray(list)){
       return list.map(exports.passes).reduce(function (left,right){
         var f = []
@@ -232,20 +258,13 @@ module.exports = function (){
         return f
       })
     } else {
-      return passes[list]
+      return __passes[list]
     }
-
-    /*var p = []
-    if(!results[list])
-      throw new Error('have no results for:' + JSON.stringify(list))
-
-    results[list].forEach(function (e){
-      if(e.status == 'success')
-        p.push(e.name)
-    })
-  
-    return p*/
   }
-  
+  function firstPass (list){
+    var p = exports.passes(list)
+    return p && p[0]
+  }
+
   return exports
 }

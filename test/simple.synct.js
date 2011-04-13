@@ -2,20 +2,25 @@
 var simple = require('../simple')
   , it = require('it-is')
 
+  function identityMM (s){
+    s.module('identity',[],function (){
+      return function (x){return x}
+    })
+
+    s.test('identityTest',['*'], function (identity){
+      var examples = [1, 123, null, {}, [], function (){}, true, false]
+    
+      examples.forEach(function (e){
+       if(e !== identity(e))
+          throw new Error('identity did not hold for:' + e)
+      }) 
+    })
+  } 
+
 exports ['resolve very simple tests'] = function (){
   var s = simple()
-  s.module('identity',[],function (){
-    return function (x){return x}
-  })
 
-  s.test('identityTest',['*'], function (identity){
-    var examples = [1, 123, null, {}, [], function (){}, true, false]
-    
-    examples.forEach(function (e){
-      if(e !== identity(e))
-        throw new Error('identity did not hold for:' + e)
-    })
-  })
+  identityMM(s)  
 
   console.log(s.__passes)
 
@@ -24,6 +29,11 @@ exports ['resolve very simple tests'] = function (){
   
   s.run('identityTest','identity')
 
+  it(s.isTest('identityTest')).equal(true)
+  it(s.isModule('identityTest')).equal(false)
+  it(s.isTest('identity')).equal(false)
+  it(s.isModule('identity')).equal(true)
+
   it(s.resolvable('identityTest')).equal(true)
   
   // now, identity should have passes idendityTest
@@ -31,28 +41,18 @@ exports ['resolve very simple tests'] = function (){
   it(s.__passes['identityTest']).deepEqual(['identity'])
 
   it(s.passes('identityTest')).deepEqual(['identity'])
+
 }
 
 exports ['resolve very simple tests 2'] = function (){
   var s = simple()
 
-  s.module('identity',[],function (){
-    return function (x){return x}
-  })
-
+  
   s.module('stringify',[],function (){
     return function (x){return JSON.stringify(x)}
   })
 
-  s.test('identityTest',['*'], function (identity){
-    var examples = [1, 123, null, {}, [], function (){}, true, false]
-    
-    examples.forEach(function (e){
-      var x = identity(e)
-      if(e !== x)
-        throw new Error('identity did not hold for:' + JSON.stringify(e) + " was(" + JSON.stringify(x) + ")")
-    })
-  })
+  identityMM(s)
 
   s.resolveAll()
 
@@ -77,12 +77,9 @@ exports ['resolve very simple tests 2'] = function (){
   })
 
   it(resolveChecked).ok()
-
 }
 
-exports ['resolve test with dependency'] = function (){
-  var s = simple()
-
+  function doubleMM (s){
   s.module('double',[],function (){
     return function (x){return x+x}
   })
@@ -109,6 +106,12 @@ exports ['resolve test with dependency'] = function (){
         throw new Error('quad did not hold for:' + e)
     })
   })
+  }
+
+exports ['resolve test with dependency'] = function (){
+  var s = simple()
+
+  doubleMM(s)
 
   s.resolveAll()
 
@@ -119,10 +122,7 @@ exports ['resolve test with dependency'] = function (){
 
 //*//*
 
-exports ['tests with primes'] = function (){
-
-  var s = simple()
-
+  function primesMM (s){
   s.module('upto',[],function (){
     return function (x){
       var a = []
@@ -221,6 +221,15 @@ exports ['tests with primes'] = function (){
         throw new Error('number of primes under 100 is 25, got:' + sieved )
   })
 
+
+  }
+
+exports ['tests with primes'] = function (){
+
+  var s = simple()
+
+  primesMM(s)
+
   it(s.resolvable('test-sieve')).equal(false)
   
   it(s.run('test-isPrime','isPrime'))
@@ -251,6 +260,25 @@ exports ['tests with primes'] = function (){
     if(s.length != 1229)
         throw new Error ('number of primes under 10000 is 1229, got:' + s )
   })
+
+  it(s.isTest('test-sieve')).equal(true)
+  it(s.isTest(['test-sieve','test-sieve2'])).equal(true)
+  it(s.isModule('sieve2')).equal(true)
+
+  it(s.tree([['test-sieve', 'test-sieve2']]))
+    .deepEqual
+    ( { 'test-sieve,test-sieve2':
+        { 'sieve': 
+          { 'test-upto': {'upto':{}}
+          , 'test-isPrime': {'isPrime':{}}
+          }
+        }
+      } )
+
+  //the head is the module for the first dep (['test-sieve', 'test-sieve2'])
+  //the tail is it's dependencies.
+  it(s.moduleTree(['test-sieve', 'test-sieve2']))
+    .deepEqual ( ['sieve', ['upto'] , ['isPrime']] )
 
   console.log(s.passes())
 }
