@@ -1,3 +1,5 @@
+var Context = require('./context')
+
 function cleanEval (code){
   var process, require, module,exports, __filename, __dirname, setTimeout,setInterval, console
   return eval (code)
@@ -5,7 +7,7 @@ function cleanEval (code){
 
 module.exports = function (){
 
-/*  
+/*
   Object.freeze(Object.prototype)
   Object.freeze(Object)
   Object.freeze(Array.prototype)
@@ -25,21 +27,28 @@ module.exports = function (){
     __passes: __passes
   , test: curry(add,[true])
   , module: curry(add,[false])
+  , pass: pass
+  , select: select
   , load: load
-  , tree: tree 
+  , tree: tree
   , moduleTree: moduleTree
-  , run: run 
+  , run: run
   , resolvable: resolvable
   , resolve: resolve
   , resolveAll: resolveAll
   , closure: closure
   , passes: passes
-  , depends: depends 
+  , depends: depends
   , isTest: isTest
-  , isModule: isModule 
+  , isModule: isModule
   , firstPass: firstPass
   }
 
+  function loadCtx (src){
+    var Test = exports.test
+    var Module = exports.module
+    eval('' + src)
+  }
   function add (name,depends,closure,isTest){
     var m = {
           name: name
@@ -48,13 +57,16 @@ module.exports = function (){
         , isTest: isTest }
       , s = {}
       , r, src
-    
+
+    if(depends[0] == '*')
+      depends.shift()
+
     for(var i in m) { s[i] = m[i] }
     s.closure = r = Math.random()
     src = '(' + JSON.stringify(s).split('' + r).join(closure.toString()) + ')'
 
-    m = cleanEval(src)
-    
+//    m = cleanEval(src)
+
     if(!isTest){
       __modules[name] = m
     } else {
@@ -63,10 +75,15 @@ module.exports = function (){
 
   }
 
-  function loadCtx (src){
-    var Test = exports.test
-    var Module = exports.module
-    eval('' + src)
+  function pass (test,module){
+    if(!__passes[test])
+       __passes[test] = []
+    if(!~__passes[test].indexOf(module))
+      __passes[test].push(module)
+  }
+
+  function select(tests){
+    return __modules[firstPass(tests)]
   }
 
   function load (files,relative,done){
@@ -79,24 +96,14 @@ module.exports = function (){
       var file = relative ? join(relative, e) : e
 
       loadCtx(fs.readFileSync(file + '.mm'))
-      
+
     })
     done()
-  }  
- 
-/*  function resolveModule(tests){
-    var p = firstPass(tests)
-      , m = __modules[p]
-    return m.closure.apply(null,m.depends.map(resolveModule))
   }
 
-  function resolve(deps,funx){
-    return funx.apply(null,deps.map(resolveModule))
-  }*/
-
   function moduleTree(tests){
-    var p
-    return [p = firstPass(tests)].concat(depends(p).map(moduleTree))
+    var m
+    return [(m = select(tests)).name].concat(m.depends.map(moduleTree))
   }
 
   //things are simplified if I insist that tests get the target as the first argument.
@@ -105,57 +112,46 @@ module.exports = function (){
   function tree (deps){
     var t = {}
 
-    deps.forEach(function (module){
-      var mDep = {}, p = firstPass(module)
-      mDep[p] = tree(depends(p))
+    deps.forEach(function (test){
+      var mDep = {}, m = select(test)
+      mDep[m.name] = tree(m.depends)
       //could iterate all passes
       //and make tree of all resolutions.
-      t[module] = mDep
+      t[test] = mDep
     })
     return t
   }
 
 /*
 
-next: a cached resolve.
-
-wrap it in a context which gets it's own resolve.
+next: move running tests into seperate object.
 
 */
 
-  function resolveM(test){
-    var p = firstPass(test)
-      , m = __modules[p]
-    return resolve(m.depends,m.closure)
-  }
-
   function resolve (deps,closure){
-    //find get exports for list, and apply to closure.
-
-    return closure.apply(null,deps.map(resolveM))
+    return new Context(exports).resolve(deps,closure)
   }
-  
+
   function run (test,module){
     if('string' == typeof test)
       test = __tests[test]
     if('string' == typeof module)
       module = __modules[module]
 
-    var r = {name: module.name, status: 'unresolved'}
+    var context = new Context(exports)
+      , r = {name: module.name, status: 'unresolved'}
+
     results[test.name] = results[test.name] || []
 
     var trial
-      , tdeps = 
-          ( test.depends[0] == '*' 
-          ? test.depends.slice(1)
-          : test.depends ) 
+
     try{
-      var target = resolve(module.depends,module.closure)
-      trial = 
-      resolve (tdeps, function (){
+      var target = context.resolve(module.depends,module.closure)
+      trial =
+      context.resolve (test.depends, function (){
           var args = arguments
           return function (){
-            //inject target here, assuming target is always first.
+            //inject target here, convention is that target is always first.
             [].unshift.call(args,target)
             test.closure.apply(null,args)
           }
@@ -165,7 +161,7 @@ wrap it in a context which gets it's own resolve.
       results[test.name].push(r)
       return r
     }
-    
+
     try{
       trial()
       r.status = 'success'
@@ -184,39 +180,29 @@ wrap it in a context which gets it's own resolve.
 
     return r
   }
-  
+
   function resolvable (test){
-    function cp (x){
-      return (
-        ('boolean' === typeof x || '*' === x)
-        ? true 
-        : !! __passes[x]
-        )
-    }
 
-    if(__passes[test])
+    if(!!passes(x))
       return true
-    else {
-      if(!__tests[test])
+
+    for(var x in __tests[test].depends){
+      if(!passes(__tests[test].depends[x]))
         return false
-      for(var x in __tests[test].depends){
-        if(!cp(__tests[test].depends[x]))
-          return false
-      }
-      return true
     }
-  }
-  function resolveAll (){
+    return true
 
+  }
+
+  function resolveAll (){
     /*
       improve this to traverse tests more efficantly.
-      
-      find free tests and thier modules, then 
-      
+
+      find free tests and thier modules, then
+
       this is passing my tests, only because i am defining my modules in topological sort order.
 
       should I do a tolopogical sort first?
-      
     */
 
     for(var i in __tests)
@@ -242,24 +228,24 @@ wrap it in a context which gets it's own resolve.
       }, true )
     return !!__tests[test]
   }
- 
+
   function isModule (module){
     return !!__modules[module]
   }
 
   function depends (module){
-    return isTest(module) 
-      ? __test[module].depends 
+    return isTest(module)
+      ? __test[module].depends
       : __modules[module].depends
   }
-  
+
   function closure (name){
     return (isModule (name) ? __modules[name] : __tests[name]).closure
   }
   function passes (list){
     if(arguments.length == 0)
       return __passes
-    if(Array.isArray(list)){
+    if(Array.isArray(list)){//find modules that pass all tests in list.
       return list.map(exports.passes).reduce(function (left,right){
         var f = []
         right.forEach(function (e){
