@@ -84,14 +84,16 @@ module.exports = function (){
     done()
   }  
  
-  function resolveModule(tests){
+/*  function resolveModule(tests){
     var p = firstPass(tests)
-    return closure(p).apply(null,depends(p).map(resolveModule))
+      , m = __modules[p]
+    return m.closure.apply(null,m.depends.map(resolveModule))
   }
 
-  function _resolve(deps,funx){
-    funx.apply(null,deps.map(resolveModule))
-  }
+  function resolve(deps,funx){
+    return funx.apply(null,deps.map(resolveModule))
+  }*/
+
   function moduleTree(tests){
     var p
     return [p = firstPass(tests)].concat(depends(p).map(moduleTree))
@@ -113,15 +115,24 @@ module.exports = function (){
     return t
   }
 
-  function resolve (deps,closure){
-     //find get exports for list, and apply to closure.
+/*
 
-    return closure.apply(null,
-      deps.map(function (e){
-          var p = firstPass(e)
-            , m = __modules[p]
-          return resolve(m.depends,m.closure)
-      }))
+next: a cached resolve.
+
+wrap it in a context which gets it's own resolve.
+
+*/
+
+  function resolveM(test){
+    var p = firstPass(test)
+      , m = __modules[p]
+    return resolve(m.depends,m.closure)
+  }
+
+  function resolve (deps,closure){
+    //find get exports for list, and apply to closure.
+
+    return closure.apply(null,deps.map(resolveM))
   }
   
   function run (test,module){
