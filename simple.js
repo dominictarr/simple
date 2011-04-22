@@ -82,6 +82,10 @@ module.exports = function (){
       __passes[test].push(module)
   }
 
+  function firstPass (list){
+    var p = exports.passes(list)
+    return p && p[0]
+  }
   function select(tests){
     return __modules[firstPass(tests)]
   }
@@ -95,7 +99,7 @@ module.exports = function (){
     files.forEach(function (e){
       var file = relative ? join(relative, e) : e
 
-      loadCtx(fs.readFileSync(file + '.mm'))
+      loadCtx(fs.readFileSync(file + '.js'))
 
     })
     done()
@@ -180,12 +184,17 @@ next: move running tests into seperate object.
 
     return r
   }
+/*
+either test has been passed, or it's dependencies are passed, or it has no dependencies
+*/
 
   function resolvable (test){
 
     if(!!passes(x))
       return true
 
+    if(!__tests[test])
+      throw new Error('should be a test:' + test)
     for(var x in __tests[test].depends){
       if(!passes(__tests[test].depends[x]))
         return false
@@ -257,10 +266,6 @@ next: move running tests into seperate object.
     } else {
       return __passes[list]
     }
-  }
-  function firstPass (list){
-    var p = exports.passes(list)
-    return p && p[0]
   }
 
   return exports
