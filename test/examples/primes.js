@@ -7,7 +7,7 @@ Module('upto',[],function (){
   }
 })
 
-Test('test-upto', ['*'], function (upto){
+Test('test-upto', [], function (upto){
     var ten= [1,2,3,4,5,6,7,8,9,10]
     var u = upto(10)
     for(var i in u){
@@ -37,7 +37,7 @@ Module('isPrime',[],function (){
   }
 })
 
-Test('test-isPrime', ['*'], function (isPrime){
+Test('test-isPrime', [], function (isPrime){
     var yes = [2,3,5,7,11,13,17,19,23,29]
     var  no = [1,4,6,8,9,10,12,14,15,16,18,20,21,22,24,25,26,28]
 
@@ -80,7 +80,7 @@ Module('sieve2',['test-isPrime'],function (isPrime){
 })
 
 
-Test('test-sieve', ['*','test-upto','test-isPrime'], function (sieve,upto,isPrime){
+Test('test-sieve', ['test-upto','test-isPrime'], function (sieve,upto,isPrime){
   var sieved = sieve(20)
   upto(20).forEach(function (e){
     if(isPrime(e) && !~sieved.indexOf(e) )
@@ -90,7 +90,7 @@ Test('test-sieve', ['*','test-upto','test-isPrime'], function (sieve,upto,isPrim
   })
 })
 
-Test('test-sieve2', ['*'], function (sieve,upto,isPrime){
+Test('test-sieve2', [], function (sieve,upto,isPrime){
   var sieved = sieve(100)
     if(sieved .length != 25)
       throw new Error('number of primes under 100 is 25, got:' + sieved )

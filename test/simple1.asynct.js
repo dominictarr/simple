@@ -20,8 +20,6 @@ exports ['resolve very simple tests'] = function (test){
 
     // now, identity should have passes idendityTest
 
-    it(s.__passes['identityTest']).deepEqual(['identity'])
-
     it(s.passes('identityTest')).deepEqual(['identity'])
 
     test.done()
@@ -64,7 +62,12 @@ exports ['resolve test with dependency'] = function (test){
   var s = simple()
   s.load(['./examples/double'],__dirname, function (){
 
-    s.resolveAll()
+  it(s.resolvable('test-double')).equal(true)
+  s.resolveAll()
+
+//  console.log(s.__modules)
+//  console.log(s.__tests)
+//    console.log('???????????????', s.passes())
 
     it(s.passes('test-double')).deepEqual(['double'])
     it(s.passes('test-quad')).deepEqual(['quad'])

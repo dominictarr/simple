@@ -28,8 +28,7 @@ module.exports = function (){
     , join = require('path').join
 //    , store = new Store()
   var exports = {
-    __modules: store.modules//__passes
-  , __tests: store.tests//__passes
+    __passes: store.__passes //__passes
   , test: curry(add,[true])
   , module: curry(add,[false])
   , pass: pass
@@ -54,11 +53,11 @@ module.exports = function (){
     var found = {tests: [], modules: []}
     var Test = function (name,depends,closure){
       found.tests.push(name)
-      store.add(name,depends,closure,true)
+      exports.test(name,depends,closure)
     }
     var Module = function (name,depends,closure){
       found.modules.push(name)
-      store.add(name,depends,closure,false)
+      exports.module(name,depends,closure)
     }
 
     eval('' + src)
@@ -66,9 +65,7 @@ module.exports = function (){
     return found
   }
   function add (name,depends,closure,isTest){
-
-    store.add(name,depends,closure,isTest)
-/*    var m = {
+    var m = {
           name: name
         , depends: depends
         , closure: closure
@@ -90,7 +87,7 @@ module.exports = function (){
     } else {
       store.tests[name] = m
     }
-*/
+
   }
 
   function pass (test,module){
@@ -153,19 +150,16 @@ next: move running tests into seperate object.
 */
 
   function resolve (deps,closure){
-    return new Context(store).resolve(deps,closure)
+    return new Context(exports).resolve(deps,closure)
   }
 
   function run (test,module){
-
     if('string' == typeof test)
       test = store.tests[test]
     if('string' == typeof module)
       module = store.modules[module]
 
-    console.log("START", ';' ,test.name,'->',module.name)
-
-    var context = new Context(store)
+    var context = new Context(exports)
       , r = {name: module.name, status: 'unresolved'}
 
     results[test.name] = results[test.name] || []
@@ -186,7 +180,6 @@ next: move running tests into seperate object.
     } catch (err) {
       r.error = err
       results[test.name].push(r)
-      console.log('!!!!!')
       return r
     }
 
@@ -197,15 +190,13 @@ next: move running tests into seperate object.
       r.status = 'failure'
       r.failure = err
     }
-    console.log(r.status, ';' ,test.name,'->',module.name)
 
     if(r.status === 'success'){
       store.pass(test.name,module.name)
-      /*__passes [test.name] = __passes [test.name] || []
+/*      __passes [test.name] = __passes [test.name] || []
 
       if(!~__passes [test.name].indexOf(module.name))
-        __passes  [test.name].push(module.name)
-    */
+        __passes  [test.name].push(module.name)*/
     }
     results[test.name].push(r)
 
@@ -216,14 +207,14 @@ either test has been passed, or it's dependencies are passed, or it has no depen
 */
 
   function resolvable (test){
-//    var x = test
-    if(!!store.passes(test))
+
+    if(!!passes(x))
       return true
 
     if(!store.tests[test])
       throw new Error('should be a test:' + test)
     for(var x in store.tests[test].depends){
-      if(!store.passes(store.tests[test].depends[x]))
+      if(!passes(store.tests[test].depends[x]))
         return false
     }
     return true
@@ -250,7 +241,7 @@ either test has been passed, or it's dependencies are passed, or it has no depen
             var s = Date.now()
             var r = run(test,module)
 
-            if('success' === r.status && -1 == store.passes(test.name).indexOf(module.name))
+            if('success' === r.status && -1 == __passes[test.name].indexOf(module.name))
               throw new Error('pass log error at:' + test.name + ' -> ' + module.name)
 
            })(store.modules[j])
@@ -278,11 +269,9 @@ either test has been passed, or it's dependencies are passed, or it has no depen
   function closure (name){
     return (isModule (name) ? store.modules[name] : store.tests[name]).closure
   }
-  function passes (l){
-//    return store.passes(l)
-    return store.passes.apply(store,arguments)
-    /*    if(arguments.length == 0)
-      return passes
+  function passes (list){
+    if(arguments.length == 0)
+      return __passes
     if(Array.isArray(list)){//find modules that pass all tests in list.
       return list.map(exports.passes).reduce(function (left,right){
         var f = []
@@ -294,7 +283,7 @@ either test has been passed, or it's dependencies are passed, or it has no depen
       })
     } else {
       return __passes[list]
-    }*/
+    }
   }
 
   return exports

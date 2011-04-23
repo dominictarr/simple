@@ -2,7 +2,7 @@ Module('double',[],function (){
   return function (x){return x+x}
 })
 
-Test('test-double',['*'], function (doub){
+Test('test-double',[], function (doub){
   var examples = [1, 123, 0,12,0.5]
 
   examples.forEach(function (e){
@@ -15,7 +15,7 @@ Module('quad',['test-double'], function (doub){
   return function (x){return doub(doub(x))}
 })
 
-Test('test-quad',['*'], function (quad){
+Test('test-quad',[], function (quad){
   var examples = [1, 123, 0,12,0.5]
 
   examples.forEach(function (e){
