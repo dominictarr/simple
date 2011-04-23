@@ -1,4 +1,9 @@
 var Context = require('./context')
+  , Store = require('./store')
+
+  /*
+  NEXT: refactor this to use Store.
+  */
 
 function cleanEval (code){
   var process, require, module,exports, __filename, __dirname, setTimeout,setInterval, console
@@ -6,7 +11,6 @@ function cleanEval (code){
 }
 
 module.exports = function (){
-
 /*
   Object.freeze(Object.prototype)
   Object.freeze(Object)
@@ -22,7 +26,7 @@ module.exports = function (){
     , ctrl = require('ctrlflow')
     , fs = require('fs')
     , join = require('path').join
-
+//    , store = new Store()
   var exports = {
     __passes: __passes
   , test: curry(add,[true])
@@ -30,6 +34,7 @@ module.exports = function (){
   , pass: pass
   , select: select
   , load: load
+  , loadCtx: loadCtx
   , tree: tree
   , moduleTree: moduleTree
   , run: run
@@ -45,9 +50,19 @@ module.exports = function (){
   }
 
   function loadCtx (src){
-    var Test = exports.test
-    var Module = exports.module
+    var found = {tests: [], modules: []}
+    var Test = function (name,depends,closure){
+      found.tests.push(name)
+      exports.test(name,depends,closure)
+    }
+    var Module = function (name,depends,closure){
+      found.modules.push(name)
+      exports.module(name,depends,closure)
+    }
+
     eval('' + src)
+
+    return found
   }
   function add (name,depends,closure,isTest){
     var m = {
@@ -58,11 +73,11 @@ module.exports = function (){
       , s = {}
       , r, src
 
-    if(depends[0] == '*')
+    if(depends[0] == '*')//backwards compatible with old stuff.
       depends.shift()
 
     for(var i in m) { s[i] = m[i] }
-    s.closure = r = Math.random()
+      s.closure = r = Math.random()
     src = '(' + JSON.stringify(s).split('' + r).join(closure.toString()) + ')'
 
 //    m = cleanEval(src)

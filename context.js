@@ -15,7 +15,6 @@ function Context (store){
       cache[m.name] = self.resolve(m.depends,m.closure)
     return cache[m.name]
   }
-
   self.resolve =
   function resolve (deps,closure){
     //find get exports for list, and apply to closure.
