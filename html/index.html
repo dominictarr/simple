@@ -1,0 +1,18 @@
+<html>
+
+<script src='http://localhost:2020/mm.js'> </script>
+<script src='http://localhost:2020/resolve/test-isPrime/test-sieve2,test-sieve'></script>
+<script>
+
+  MM.resolve('test-isPrime/test-sieve,test-sieve', function (isPrime,sieve){
+    console.log(isPrime(43))
+    var l
+    console.log(l = sieve(2011))
+    console.log(l.length)
+  })
+
+</script>
+<body>
+  <h1>Meta-Modular</h1>
+</body>
+</html>

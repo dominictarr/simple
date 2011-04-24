@@ -5,9 +5,9 @@ exports ['run header'] = function (){
 
   eval(header())
 
-  it(Module).function()
-  it(_pass).function()
-  it(resolve).function()
+  it(MM.Module).function()
+  it(MM.pass).function()
+  it(MM.resolve).function()
 
 }
 

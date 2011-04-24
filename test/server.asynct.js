@@ -48,6 +48,8 @@ exports['load file'] = function (test){
   })
 }
 
+
+
 exports ['check passes'] = function (test){
   request({uri: path('/passes')},function (err,res,body){
     it(err).equal(null)
@@ -56,14 +58,43 @@ exports ['check passes'] = function (test){
   })
 }
 
+
 exports ['header'] = function (test){
 
-  request({uri: path('/resolve/identityTest')},function (err,res,body){
+  request({uri: path('/mm.js')},function (err,res,body){
 
+    eval(body)
 
+    it(MM.Module).function()
+    it(MM.pass).function()
+    it(MM.resolve).function()
+
+    MM.Module('even', [], function (){
+      return function (e){
+        return e % 2 == 0
+      }
+    })
+
+    MM.Module('square', ['test-even'], function (even){
+      return function (e){
+        even(e)
+        return Math.sqrt(e) % 1 == 0
+      }
+    })
+
+    MM.pass('test-even','even')//by default tests will not be sent to the browser.
+    MM.pass('test-square','square')//by default tests will not be sent to the browser.
+    // ['test-even','test-square'] can be written as 'test-even/test-square'
+    MM.resolve('test-even/test-square', function (even,isSquare){
+      it(even(2)).equal(true)
+      it(even(7)).equal(false)
+      it(isSquare(7)).equal(false)
+      it(isSquare(9)).equal(true)
+
+      test.done()
+    })
 
   })
-
 }
 
 exports ['resolve'] = function (test){
@@ -108,4 +139,42 @@ exports ['resolve'] = function (test){
     test.done()
   })
 }
+
+exports['load more files'] = function (test){
+ var file = ''+ fs.readFileSync(join(__dirname,'examples/primes.js'))
+
+  request.post({uri: path(''), body: file},function (err,res,body){
+    it(err).equal(null)
+
+    it(JSON.parse(body)).has({
+      tests: it.ok()
+    , modules: it.ok()
+    })
+    test.done()
+  })
+}
+
+exports ['resolve multiple tests'] = function (test){
+
+  request({uri: path('/resolve/test-sieve,test-sieve2')},function (err,res,body){
+
+    var expect = ['test-isPrime', 'test-upto', 'test-sieve','test-sieve2'].sort()
+      , tests = []
+
+    ;(function (src){
+      var MM = {}
+      MM.Module = function (name,deps,fun){}
+      MM.pass = function (test,module){
+        tests.push(test)
+      }
+      eval(src)
+
+    })(body)
+
+    it(tests.sort()).deepEqual(expect)
+
+    test.done()
+  })
+}
+//*/
 

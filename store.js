@@ -62,6 +62,8 @@ function Store (){
     var r = {}
       , self = this
     function x (test){
+      if(Array.isArray(test))
+        return test.forEach(x)
       if(r[test])
         return
       var m = self.select(test)

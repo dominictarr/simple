@@ -62,5 +62,3 @@ module.exports = function (){
   , '})()'
   ].join('\n')
 }
-
-console.log(module.exports())

@@ -1,0 +1,24 @@
+<html>
+
+<script src='http://localhost:2020/mm.js'> </script>
+<script>
+
+  MM.Module('hello',[], function (){
+    return function (name){
+      console.log('Hello, ' + name + "!")
+    }
+  })
+  MM.pass('test-hello','hello')
+
+</script>
+<script>
+
+  resolve(['test-hello'], function (hello){
+    hello('billy')
+  })
+
+</script>
+<body>
+  <h1>Meta-Modular</h1>
+</body>
+</html>

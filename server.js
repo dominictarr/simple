@@ -8,6 +8,7 @@ resolve
 */
 var http = require('http')
   , simple = require('./simple')
+  , header = require('./header')()
 
 /*
   persist modules in couchdb.
@@ -61,7 +62,7 @@ function createServer (){
   return function (req,res){
 
     res.writeHead(200,{
-      'Content-Type': 'application/json'
+      'Content-Type': 'text/javascript'
     })
 
     switch(req.method){
@@ -80,17 +81,23 @@ function createServer (){
       case 'GET':
         var args = req.url.split('/').slice(1)
           , path = args.shift()
-        if('passes' == path){
-          console.log(args)
-          res.end(JSON.stringify(s.passes()))
-        } else if('resolve' == path){
-          args = args.map(function (e){
-            if(~e.indexOf(','))
-              return e.split(',')
-            return e
-          })
-          console.log(args)
-          res.end(resolve(args))
+        switch(path){
+          case 'passes':
+            console.log(args)
+            res.end(JSON.stringify(s.passes()))
+            break
+          case 'resolve':
+            args = args.map(function (e){
+              if(~e.indexOf(','))
+                return e.split(',')
+              return e
+            })
+            console.log(args)
+            res.end(resolve(args))
+            break
+          case 'mm.js':
+            res.end(header)
+            break
         }
         break
     }
@@ -98,5 +105,6 @@ function createServer (){
 }
 
 if(!module.parent){
+  console.log('meta-modular server running on 2020')
   http.createServer(createServer ()).listen(2020)
 }
