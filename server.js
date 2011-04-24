@@ -29,8 +29,37 @@ var http = require('http')
 */
 
 module.exports = createServer
+
+    function p(test,module){
+      return ('_pass(' + JSON.stringify(test) + ',' + JSON.stringify(module) + ');')
+    }
+    function r(m){
+      return (m.isTest ? 'Test' : 'Module') +
+        '(' +
+          [ JSON.stringify(m.name)
+          , JSON.stringify(m.depends)
+          , m.closure.toString()
+          ].join(',')
+        + ');'
+    }
+
 function createServer (){
   var s = simple()
+
+
+  function resolve(tests){
+    //console.log(tests)
+//    return '1'
+    var passes = []
+    var modules = []
+    var deps = s.store.depends(tests)
+    for(var test in deps){
+      var module = deps[test]
+      passes.push(p(test,module))
+      modules.push(r(s.store.modules[module]))
+    }
+    return [modules.join('\n'), passes.join('\n')].join('\n')
+  }
 
   return http.createServer(function (req,res){
 
@@ -52,7 +81,20 @@ function createServer (){
         })
         break
       case 'GET':
-        res.end(JSON.stringify(s.passes()))
+        var args = req.url.split('/').slice(1)
+          , path = args.shift()
+        if('passes' == path){
+          console.log(args)
+          res.end(JSON.stringify(s.passes()))
+        } else if('resolve' == path){
+          args = args.map(function (e){
+            if(~e.indexOf(','))
+              return e.split(',')
+            return e
+          })
+          console.log(args)
+          res.end(resolve(args))
+        }
         break
     }
 

@@ -55,9 +55,25 @@ function Store (){
 
   this.select = function (tests){
     var p = this.passes(tests)
-    console.log(tests,p)
     return modules[p && p[0] ]
     //get module which passes test(s)
   }
-
+  this.depends = function (tests){
+    var r = {}
+      , self = this
+    function x (test){
+      if(r[test])
+        return
+      var m = self.select(test)
+      if(!m){
+        r[test] = 'undefined'
+        return
+      }
+      r[test] = m.name
+      if(m.depends.length)
+        m.depends.forEach(x)
+    }
+    tests.forEach(x)
+    return r
+  }
 }

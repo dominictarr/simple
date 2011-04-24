@@ -65,10 +65,6 @@ exports ['resolve test with dependency'] = function (test){
   it(s.resolvable('test-double')).equal(true)
   s.resolveAll()
 
-//  console.log(s.__modules)
-//  console.log(s.__tests)
-//    console.log('???????????????', s.passes())
-
     it(s.passes('test-double')).deepEqual(['double'])
     it(s.passes('test-quad')).deepEqual(['quad'])
 
@@ -132,7 +128,7 @@ exports ['tests with primes'] = function (test){
     it(s.moduleTree(['test-sieve', 'test-sieve2']))
       .deepEqual ( ['sieve', ['upto'] , ['isPrime']] )
 
-    console.log(s.passes())
+//    console.log(s.passes())
     test.done()
   })
 }

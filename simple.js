@@ -2,7 +2,12 @@ var Context = require('./context')
   , Store = require('./store')
 
   /*
-  NEXT: refactor this to use Store.
+  NEXT: client side resolve...
+
+  request passes of a list of tests, get scource with
+    Module(name,[depends], function (){})
+    and
+    _pass(test,module)
   */
 
 function cleanEval (code){
@@ -18,22 +23,20 @@ module.exports = function (){
   Object.freeze(Array)
 */
   var store = new Store()
-//  var store.modules = {}
-//    , __tests = {}
     , results = []
-//    , __passes = {}
     , curry = require('curry')
     , ctrl = require('ctrlflow')
     , fs = require('fs')
     , join = require('path').join
-//    , store = new Store()
+
   var exports = {
-    __modules: store.modules//__passes
-  , __tests: store.tests//__passes
-  , test: curry(add,[true])
-  , module: curry(add,[false])
-  , pass: pass
-  , select: select
+    __modules: store.modules
+  , __tests: store.tests
+  , test: curry(store.add,[true])
+  , module: curry(store.add,[false])
+  , pass: store.pass
+  , store: store
+  , select: store.select
   , load: load
   , loadCtx: loadCtx
   , tree: tree
@@ -42,12 +45,9 @@ module.exports = function (){
   , resolvable: resolvable
   , resolve: resolve
   , resolveAll: resolveAll
-  , closure: closure
-  , passes: passes
-  , depends: depends
+  , passes: store.passes
   , isTest: isTest
   , isModule: isModule
-  , firstPass: firstPass
   }
 
   function loadCtx (src){
@@ -64,50 +64,6 @@ module.exports = function (){
     eval('' + src)
 
     return found
-  }
-  function add (name,depends,closure,isTest){
-
-    store.add(name,depends,closure,isTest)
-/*    var m = {
-          name: name
-        , depends: depends
-        , closure: closure
-        , isTest: isTest }
-      , s = {}
-      , r, src
-
-    if(depends[0] == '*')//backwards compatible with old stuff.
-      depends.shift()
-
-    for(var i in m) { s[i] = m[i] }
-      s.closure = r = Math.random()
-    src = '(' + JSON.stringify(s).split('' + r).join(closure.toString()) + ')'
-
-//    m = cleanEval(src)
-
-    if(!isTest){
-      store.modules[name] = m
-    } else {
-      store.tests[name] = m
-    }
-*/
-  }
-
-  function pass (test,module){
-    store.pass(test,module)
-/*    if(!store.passes[test])
-       __passes[test] = []
-    if(!~__passes[test].indexOf(module))
-      __passes[test].push(module)
-*/
-  }
-
-  function firstPass (list){
-    var p = exports.passes(list)
-    return p && p[0]
-  }
-  function select(tests){
-    return store.modules[firstPass(tests)]
   }
 
   function load (files,relative,done){
@@ -127,7 +83,7 @@ module.exports = function (){
 
   function moduleTree(tests){
     var m
-    return [(m = select(tests)).name].concat(m.depends.map(moduleTree))
+    return [(m = store.select(tests)).name].concat(m.depends.map(moduleTree))
   }
 
   //things are simplified if I insist that tests get the target as the first argument.
@@ -137,7 +93,7 @@ module.exports = function (){
     var t = {}
 
     deps.forEach(function (test){
-      var mDep = {}, m = select(test)
+      var mDep = {}, m = store.select(test)
       mDep[m.name] = tree(m.depends)
       //could iterate all passes
       //and make tree of all resolutions.
@@ -147,9 +103,7 @@ module.exports = function (){
   }
 
 /*
-
 next: move running tests into seperate object.
-
 */
 
   function resolve (deps,closure){
@@ -162,8 +116,6 @@ next: move running tests into seperate object.
       test = store.tests[test]
     if('string' == typeof module)
       module = store.modules[module]
-
-    console.log("START", ';' ,test.name,'->',module.name)
 
     var context = new Context(store)
       , r = {name: module.name, status: 'unresolved'}
@@ -186,7 +138,6 @@ next: move running tests into seperate object.
     } catch (err) {
       r.error = err
       results[test.name].push(r)
-      console.log('!!!!!')
       return r
     }
 
@@ -197,26 +148,19 @@ next: move running tests into seperate object.
       r.status = 'failure'
       r.failure = err
     }
-    console.log(r.status, ';' ,test.name,'->',module.name)
-
     if(r.status === 'success'){
       store.pass(test.name,module.name)
-      /*__passes [test.name] = __passes [test.name] || []
-
-      if(!~__passes [test.name].indexOf(module.name))
-        __passes  [test.name].push(module.name)
-    */
     }
     results[test.name].push(r)
 
     return r
   }
+
 /*
 either test has been passed, or it's dependencies are passed, or it has no dependencies
 */
 
   function resolvable (test){
-//    var x = test
     if(!!store.passes(test))
       return true
 
@@ -232,29 +176,16 @@ either test has been passed, or it's dependencies are passed, or it has no depen
 
   function resolveAll (){
     /*
-      improve this to traverse tests more efficantly.
-
-      find free tests and thier modules, then
-
-      this is passing my tests, only because i am defining my modules in topological sort order.
-
-      should I do a tolopogical sort first?
+      I should do a tolopogical sort first.
     */
 
     for(var i in store.tests)
       (function (test){
-      if(resolvable(test.name))
+        if(!resolvable(test.name))
+          return
         for(var j in store.modules)
-          (function (module){
-
-            var s = Date.now()
-            var r = run(test,module)
-
-            if('success' === r.status && -1 == store.passes(test.name).indexOf(module.name))
-              throw new Error('pass log error at:' + test.name + ' -> ' + module.name)
-
-           })(store.modules[j])
-        })(store.tests[i])
+          run(test,store.modules[j])
+      })(store.tests[i])
   }
 
   function isTest (test){
@@ -273,28 +204,6 @@ either test has been passed, or it's dependencies are passed, or it has no depen
     return isTest(module)
       ? __test[module].depends
       : store.modules[module].depends
-  }
-
-  function closure (name){
-    return (isModule (name) ? store.modules[name] : store.tests[name]).closure
-  }
-  function passes (l){
-//    return store.passes(l)
-    return store.passes.apply(store,arguments)
-    /*    if(arguments.length == 0)
-      return passes
-    if(Array.isArray(list)){//find modules that pass all tests in list.
-      return list.map(exports.passes).reduce(function (left,right){
-        var f = []
-        right.forEach(function (e){
-          if(~left.indexOf(e))
-            f.push(e)
-        })
-        return f
-      })
-    } else {
-      return __passes[list]
-    }*/
   }
 
   return exports

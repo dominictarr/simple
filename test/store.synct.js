@@ -7,19 +7,14 @@ exports ['api'] = function (){
   it(store).has({
     select: it.function ()
   , pass: it.function ()
-//  , passes: it.function ()
   , add: it.function ()
+  , depends: it.function ()
   })
 }
 
 exports ['add'] = function (){
   var store = new Store()
-    /*, e = {
-      name: 'a'
-    , depends: []
-    , closure: function (){}
-    , isTest: false
-    }*/
+
   store.add('a',[],function (){},false)
   store.pass('test-a','a')
 
@@ -51,4 +46,31 @@ exports ['add multiple'] = function (){
   }
   it(mods).deepEqual(['a','b','c'])
   it(store.tests).deepEqual({})
+
+  it(store.depends(['test-a']))
+  .deepEqual({
+    'test-a': 'a'
+  })
+}
+
+exports ['add multiple'] = function (){
+  var store = new Store()
+  store.add('a',[],function (){},false)
+  store.add('b',[],function (){},false)
+  store.add('c',[],function (){},false)
+  store.pass('test-a','a')
+  store.pass('test-a','b')
+  store.pass('test-b','b')
+  store.pass('test-b','c')
+
+  //retrive the modules and passes needed for a given resolve.
+  //the pairs are the _pass(key,value) which needs to be sent
+  //and the values are the modules to be sent.
+  //optionally, could send the tests, and run them before loading the modules.
+
+  it(store.depends(['test-a','test-b']))
+  .deepEqual({
+    'test-a': 'a'
+  , 'test-b': 'b'
+  })
 }
