@@ -1,5 +1,6 @@
 
-var server = require('../server')()
+var http = require('http')
+  , server = http.createServer(require('../server')())
   , request = require ('request')
   , it = require('it-is')
   , port = 2020
@@ -55,6 +56,16 @@ exports ['check passes'] = function (test){
   })
 }
 
+exports ['header'] = function (test){
+
+  request({uri: path('/resolve/identityTest')},function (err,res,body){
+
+
+
+  })
+
+}
+
 exports ['resolve'] = function (test){
 
   request({uri: path('/resolve/identityTest')},function (err,res,body){
@@ -65,13 +76,14 @@ exports ['resolve'] = function (test){
     moduleCalled = passCalled = false
 
     ;(function (src){
-      var Module = function (name,deps,fun){
+      var MM = {}
+      MM.Module = function (name,deps,fun){
         it(name).equal('identity')
         it(deps).deepEqual([])
         it(fun()(12343245)).equal(12343245)
         moduleCalled = true
       }
-      var _pass = function (test,module){
+      MM.pass = function (test,module){
         it(test).equal('identityTest')
         it(module).equal('identity')
         passCalled = true

@@ -6,9 +6,9 @@ passes
 
 resolve
 */
-
 var http = require('http')
   , simple = require('./simple')
+
 /*
   persist modules in couchdb.
 
@@ -31,10 +31,10 @@ var http = require('http')
 module.exports = createServer
 
     function p(test,module){
-      return ('_pass(' + JSON.stringify(test) + ',' + JSON.stringify(module) + ');')
+      return ('MM.pass(' + JSON.stringify(test) + ',' + JSON.stringify(module) + ');')
     }
     function r(m){
-      return (m.isTest ? 'Test' : 'Module') +
+      return 'MM.' + (m.isTest ? 'Test' : 'Module') +
         '(' +
           [ JSON.stringify(m.name)
           , JSON.stringify(m.depends)
@@ -46,10 +46,7 @@ module.exports = createServer
 function createServer (){
   var s = simple()
 
-
   function resolve(tests){
-    //console.log(tests)
-//    return '1'
     var passes = []
     var modules = []
     var deps = s.store.depends(tests)
@@ -61,7 +58,7 @@ function createServer (){
     return [modules.join('\n'), passes.join('\n')].join('\n')
   }
 
-  return http.createServer(function (req,res){
+  return function (req,res){
 
     res.writeHead(200,{
       'Content-Type': 'application/json'
@@ -97,12 +94,9 @@ function createServer (){
         }
         break
     }
-
-
-  })
-
+  }
 }
 
 if(!module.parent){
-  createServer ().listen(2020)
+  http.createServer(createServer ()).listen(2020)
 }
