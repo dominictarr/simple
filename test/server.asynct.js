@@ -178,3 +178,19 @@ exports ['resolve multiple tests'] = function (test){
 }
 //*/
 
+exports ['sensible error if ask for unknown test'] = function (test){
+
+  request({uri: path('/resolve/test-unknown52397432047')},function (err,res,body){
+    if(err)
+      throw err
+    try{
+      eval(body)
+    } catch (error){
+      it(error).property('message',it.matches(/test-unknown52397432047/))
+      console.log(error.message)
+    }
+
+    test.done()
+  })
+
+}

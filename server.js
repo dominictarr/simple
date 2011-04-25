@@ -49,12 +49,17 @@ function createServer (){
 
   function resolve(tests){
     var passes = []
-    var modules = []
-    var deps = s.store.depends(tests)
-    for(var test in deps){
-      var module = deps[test]
-      passes.push(p(test,module))
-      modules.push(r(s.store.modules[module]))
+      , modules = []
+      , deps = s.store.depends(tests)
+    for(var tname in deps){
+      var mname = deps[tname]
+        , module = s.store.modules[mname]
+      if(!module)
+        modules.push('throw new Error("no module passes:\'' + tname+ '\'")')
+      else {
+        modules.push(r(module))
+        passes.push(p(tname,mname))
+      }
     }
     return [modules.join('\n'), passes.join('\n')].join('\n')
   }
