@@ -13,11 +13,22 @@ function Store (){
   if(!(this instanceof Store)) return new Store()
 
   var passes = {}
+    , passed = {}
     , modules = {}
     , tests = {}
 
   this.modules = modules
   this.tests = tests
+
+  function r(){
+    return 'MM.' + (this.isTest ? 'Test' : 'Module') +
+      '(' +
+        [ JSON.stringify(this.name)
+        , JSON.stringify(this.depends)
+        , this.closure.toString()
+        ].join(',')
+      + ');'
+  }
 
   this.add = function (n,depends,closure,isTest){
     var m = {
@@ -25,12 +36,23 @@ function Store (){
     , depends: depends
     , closure: closure
     , isTest: isTest
+    , toString: r
+    }
+    var o = (isTest ? tests : modules)[n]
+    if(o){
+      if(m.toString() === o.toString())
+        return null
+      throw new Error((isTest ? 'test ' : 'module ') + JSON.stringify(n) + ' already exists')
+      //would be better to log the modules which already exist and notify the user.
     }
     ;(isTest ? tests : modules)[n] = m
+
+    return m
   }
   this.pass = function (test,module){
     //save module has passed test.
     passes[test] = merge(passes[test],module)
+    passed[module] = merge(passed[module],test)
   }
   this.passes = function (list){
     if(arguments.length == 0)
@@ -52,7 +74,9 @@ function Store (){
       return passes[list]
     }
   }
-
+  this.passed = function (module){
+    return passed[module]
+  }
   this.select = function (tests){
     var p = this.passes(tests)
     return modules[p && p[0] ]

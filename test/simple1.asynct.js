@@ -72,7 +72,6 @@ exports ['resolve test with dependency'] = function (test){
   })
 }
 
-//*/
 
 exports ['tests with primes'] = function (test){
 
@@ -128,7 +127,6 @@ exports ['tests with primes'] = function (test){
     it(s.moduleTree(['test-sieve', 'test-sieve2']))
       .deepEqual ( ['sieve', ['upto'] , ['isPrime']] )
 
-//    console.log(s.passes())
     test.done()
   })
 }

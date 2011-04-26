@@ -50,20 +50,29 @@ module.exports = function (){
   , isModule: isModule
   }
 
+  function add (name,depends,closure,isTest,found){
+     try {
+        if(!store.add(name,depends,closure,isTest))
+          return found.notUpdated.push(name)
+      } catch (err) {
+        //throw err//log non new modules.
+        return found.nameTaken.push(name)
+      }
+      ;(isTest ? found.tests : found.modules).push(name)
+  }
   function loadCtx (src){
-    var found = {tests: [], modules: []}
-    var Test = function (name,depends,closure){
-      found.tests.push(name)
-      store.add(name,depends,closure,true)
+    var __found = {tests: [], modules: [], notUpdated: [], nameTaken: []}
+    var Test = function (name,depends,closure) {
+      add(name,depends,closure,true,__found)
     }
     var Module = function (name,depends,closure){
-      found.modules.push(name)
-      store.add(name,depends,closure,false)
+      add(name,depends,closure,false,__found)
     }
+    var MM = {Module: Module, Test: Test}
 
     eval('' + src)
 
-    return found
+    return __found
   }
 
   function load (files,relative,done){

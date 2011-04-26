@@ -15,9 +15,7 @@ exports.__teardown = function (test){
 }
 
 function path(p){
-  var r = 'http://localhost:' + port + p
-  console.log(r)
-  return r
+  return 'http://localhost:' + port + p
 }
 
 exports['call passes on empty database'] = function (test){
@@ -40,7 +38,7 @@ exports['load file'] = function (test){
   request.post({uri: path(''), body:file},function (err,res,body){
     it(err).equal(null)
 
-    it(JSON.parse(body)).deepEqual({
+    it(JSON.parse(body)).has({
       tests: ['identityTest']
     , modules: ['identity']
     })
@@ -150,6 +148,20 @@ exports['load more files'] = function (test){
       tests: it.ok()
     , modules: it.ok()
     })
+
+    test.done()
+  })
+}
+
+exports ['load file with syntax error'] = function (test){
+
+  request.post({uri: path(''), body: ','},function (err,res,body){
+    it(err).equal(null)
+
+    it(JSON.parse(body)).has({
+      type: 'unexpected_token'
+    , arguments: [',']
+    })
     test.done()
   })
 }
@@ -186,10 +198,35 @@ exports ['sensible error if ask for unknown test'] = function (test){
     try{
       eval(body)
     } catch (error){
+//      console.log(body)
       it(error).property('message',it.matches(/test-unknown52397432047/))
       console.log(error.message)
+      return test.done()
     }
+    throw new Error('expect exception due to unknown test')
+  })
 
+}
+
+exports ['report if tried to reload an identical module'] = function (test){
+ var file = ''+ fs.readFileSync(join(__dirname,'examples/primes.js'))
+
+  request.post({uri: path(''), body: file},function (err,res,body){
+    it(err).equal(null)
+
+    it(JSON.parse(body)).has({
+      tests: it.deepEqual([])
+    , modules: it.deepEqual([])
+    , notUpdated: it.deepEqual(["upto",
+        "test-upto",
+        "isPrime",
+        "test-isPrime",
+        "sieve",
+        "sieve-broke",
+        "sieve2",
+        "test-sieve",
+        "test-sieve2"])
+    })
     test.done()
   })
 

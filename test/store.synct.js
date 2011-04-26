@@ -74,3 +74,16 @@ exports ['add multiple'] = function (){
   , 'test-b': 'b'
   })
 }
+
+exports ['each module name must be unique'] = function (){
+  var store = new Store()
+  store.add('a',[],function (){},false)
+
+  it(function (){
+    store.add('a',[],function (){},false)//is the same module
+  }).doesNotThrow()
+
+  it(function (){
+    store.add('a',[],function (){;},false)
+  }).throws()
+}
